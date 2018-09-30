@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-	"mahonia"
+    "github.com/axgle/mahonia"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,7 +14,7 @@ import (
 //登陆
 var count = 0 //记录登陆次数
 
-func loginNet() (sign int) {
+func loginNet() (sign int, err error) {
 	const responseURL = "http://192.168.252.254"
 	var account, password string
 
@@ -39,9 +39,9 @@ func loginNet() (sign int) {
 	postDataBytes := []byte(postDataStr)
 	postBytesReader := bytes.NewReader(postDataBytes)
 	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
-	httpResp, err := client.Do(httpReq)
-	if err != nil {
-		return 0
+	httpResp, err1 := client.Do(httpReq)
+	if err1 != nil {
+		return 0 , err1
 	}
 	defer httpResp.Body.Close()
 
@@ -53,10 +53,11 @@ func loginNet() (sign int) {
 
 		} else {
 			fmt.Println("You have login four times!")
-			return 0
+			return 0, err
 		}
 	}
-	return 1
+	fmt.printf("The account of %s ",account)
+	return 1, err
 
 }
 
@@ -126,7 +127,11 @@ func main() {
 	if chose == "n" {
 		return
 	}
-	sign := loginNet()
+	sign, err := loginNet()
+	if err != nil{
+	    fmt.Println("login error is ",err)
+	    return 
+	}
 	if sign == 1 {
 		fmt.Println("login success !")
 	}
