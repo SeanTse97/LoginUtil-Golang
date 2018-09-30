@@ -56,7 +56,7 @@ func loginNet() (sign int, err error) {
 			return 0, err
 		}
 	}
-	fmt.printf("The account of %s ",account)
+	fmt.Printf("The account of %s ",account)
 	return 1, err
 
 }
