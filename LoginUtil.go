@@ -1,14 +1,14 @@
-// LoginUtil
+// LoginUtil.go
 package main
 
 import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-    "github.com/axgle/mahonia"
 	"net/http"
 	"net/url"
 	"strings"
+	"github.com/axgle/mahonia"
 )
 
 //登陆
@@ -41,7 +41,7 @@ func loginNet() (sign int, err error) {
 	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
 	httpResp, err1 := client.Do(httpReq)
 	if err1 != nil {
-		return 0 , err1
+		return 0, err1
 	}
 	defer httpResp.Body.Close()
 
@@ -56,7 +56,7 @@ func loginNet() (sign int, err error) {
 			return 0, err
 		}
 	}
-	fmt.Printf("The account of %s ",account)
+	fmt.Printf("The account of %s ", account)
 	return 1, err
 
 }
@@ -88,7 +88,7 @@ func checkLogin() (flag bool, err error) {
 		fmt.Println("checklogin error is ", err)
 		return flag, err
 	}
-	decoder := mahonia.NewDecoder("gb2312")
+	decoder := mahonia.NewDecoder("GBK")
 
 	defer resp.Body.Close()
 
@@ -128,9 +128,9 @@ func main() {
 		return
 	}
 	sign, err := loginNet()
-	if err != nil{
-	    fmt.Println("login error is ",err)
-	    return 
+	if err != nil {
+		fmt.Println("login error is ", err)
+		return
 	}
 	if sign == 1 {
 		fmt.Println("login success !")
