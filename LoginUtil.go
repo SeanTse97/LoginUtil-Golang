@@ -5,15 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/axgle/mahonia"
 )
 
-//登陆
-var count = 0 //记录登陆次数
+//上网登录
 func loginNet(account, password string) (sign int, err error) {
 	const responseURL = "http://192.168.252.254"
 	var client *http.Client
@@ -48,7 +49,7 @@ func loginNet(account, password string) (sign int, err error) {
 
 }
 
-//登出
+//登出网络
 func loginOut() {
 	_, err := http.Get("http://192.168.252.254/F.htm")
 	if err != nil {
@@ -122,6 +123,7 @@ func loginInit() (r int, err1 error) {
 
 	var chose string
 	var account, password string
+	var times float64
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
@@ -156,6 +158,13 @@ func loginInit() (r int, err1 error) {
 	}
 	if sign == 1 {
 		fmt.Println("login success !")
+		fmt.Printf("Please set time to check(enter -1 to pass):")
+		fmt.Scanln(&times)
+		if times >= 0 {
+			keepOnline(times, account, password)
+		} else {
+			fmt.Println("Pass this set up!")
+		}
 	}
 	return 1, nil
 
@@ -165,7 +174,7 @@ func loginInit() (r int, err1 error) {
 func nextAction() (sign int) {
 	var chose int
 	fmt.Println("Please enter next operate:")
-	fmt.Printf("1、change user  2、exit script:")
+	fmt.Printf("1、change user  2、exit script: ")
 	fmt.Scanln(&chose)
 	switch chose {
 	case 1:
@@ -184,6 +193,31 @@ func nextAction() (sign int) {
 	return 0
 }
 
+//后台保护,可使用go build -ldflags “-H=windowsgui”使程序进入后台
+func keepOnline(times float64, account, password string) {
+
+	tc := time.Tick(time.Duration(times) * time.Second)
+
+	for _ = range tc {
+		flag, err := checkLogin()
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		if flag == false {
+			_, err1 := loginNet(account, password)
+			if err1 != nil {
+				log.Fatal(err1)
+				return
+			}
+
+			fmt.Println("return login!")
+
+		}
+
+	}
+}
+
 //命令行函数
 func command() (chose bool) {
 
@@ -192,6 +226,7 @@ func command() (chose bool) {
 	account := flag.String("a", " ", "Input your accout")
 	password := flag.String("p", " ", "Input your password")
 	compulsive := flag.Bool("c", false, "Compulsive login")
+	times := flag.Float64("t", -1, "Set time(second)")
 
 	flag.Parse()
 	sign, err := checkLogin()
@@ -215,6 +250,10 @@ func command() (chose bool) {
 		}
 		if sign == 1 {
 			fmt.Println("login success !")
+			//执行后台保护
+			if *times >= 0 {
+				keepOnline(*times, *account, *password)
+			}
 		}
 	} else if sign == true {
 		fmt.Println("You have Login,don't login once more!")
@@ -225,6 +264,7 @@ func command() (chose bool) {
 		fmt.Println("-a , Account ,  Input your login account")
 		fmt.Println("-p , Password , Input your login password")
 		fmt.Println("-c , Compulsive login , Compulsive login the Internet(enter -c=true/false)")
+		fmt.Println("-t, set time(second), set time to keep online")
 
 	}
 	return false
