@@ -123,7 +123,7 @@ func loginInit() (r int, err1 error) {
 
 	var chose string
 	var account, password string
-	var times float64
+	var times, timeout float64
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
@@ -160,8 +160,10 @@ func loginInit() (r int, err1 error) {
 		fmt.Println("login success !")
 		fmt.Printf("Please set time to check(enter -1 to pass):")
 		fmt.Scanln(&times)
+		fmt.Printf("Please set time to keep(enter -1 to pass):")
+		fmt.Scanln(&timeout)
 		if times >= 0 {
-			keepOnline(times, account, password)
+			keepOnline(times, timeout, account, password)
 		} else {
 			fmt.Println("Pass this set up!")
 		}
@@ -193,29 +195,38 @@ func nextAction() (sign int) {
 	return 0
 }
 
-//后台保护,可使用go build -ldflags “-H=windowsgui”使程序进入后台
-func keepOnline(times float64, account, password string) {
+//后台保护
+func keepOnline(times, until float64, account, password string) {
+
+	until = until * 3600 //数据换算
 
 	tc := time.Tick(time.Duration(times) * time.Second)
 
-	for _ = range tc {
-		flag, err := checkLogin()
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		if flag == false {
-			_, err1 := loginNet(account, password)
-			if err1 != nil {
-				log.Fatal(err1)
+	timeout := time.NewTimer(time.Duration(until) * time.Second)
+
+	go func() {
+		for _ = range tc {
+			flag, err := checkLogin()
+			if err != nil {
+				log.Fatal(err)
 				return
 			}
+			if flag == false {
+				_, err1 := loginNet(account, password)
+				if err1 != nil {
+					log.Fatal(err1)
+					return
+				}
 
-			fmt.Println("return login!")
+				fmt.Println("return login!")
+			}
 
 		}
 
-	}
+	}()
+	<-timeout.C
+	loginOut()
+	return
 }
 
 //命令行函数
@@ -227,6 +238,7 @@ func command() (chose bool) {
 	password := flag.String("p", " ", "Input your password")
 	compulsive := flag.Bool("c", false, "Compulsive login")
 	times := flag.Float64("t", -1, "Set time(second)")
+	until := flag.Float64("u", -1, "keep online until(hour)")
 
 	flag.Parse()
 	sign, err := checkLogin()
@@ -252,10 +264,10 @@ func command() (chose bool) {
 			fmt.Println("login success !")
 			//执行后台保护
 			if *times >= 0 {
-				keepOnline(*times, *account, *password)
+				keepOnline(*times, *until, *account, *password)
 			}
 		}
-	} else if sign == true {
+	} else if sign == true && len(*account) > 1 {
 		fmt.Println("You have Login,don't login once more!")
 	} else {
 		fmt.Println("optional arguments:")
@@ -265,6 +277,7 @@ func command() (chose bool) {
 		fmt.Println("-p , Password , Input your login password")
 		fmt.Println("-c , Compulsive login , Compulsive login the Internet(enter -c=true/false)")
 		fmt.Println("-t, set time(second), set time to keep online")
+		fmt.Println("-u, set time(hour), to make sure on line")
 
 	}
 	return false
