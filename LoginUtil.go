@@ -124,6 +124,7 @@ func loginInit() (r int, err1 error) {
 	var chose string
 	var account, password string
 	var times, timeout float64
+
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
@@ -302,6 +303,5 @@ func main() {
 			sign = nextAction()
 		}
 	}
-	return
 
 }
