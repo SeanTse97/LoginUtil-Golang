@@ -9,20 +9,12 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-<<<<<<< HEAD
-=======
 	"time"
->>>>>>> mr-3
 
 	"github.com/axgle/mahonia"
 )
 
-<<<<<<< HEAD
-//登陆
-var count = 0 //记录登陆次数
-=======
 //上网登录
->>>>>>> mr-3
 func loginNet(account, password string) (sign int, err error) {
 	const responseURL = "http://192.168.252.254"
 	var client *http.Client
@@ -61,16 +53,16 @@ func loginNet(account, password string) (sign int, err error) {
 func loginOut() {
 	_, err := http.Get("http://192.168.252.254/F.htm")
 	if err != nil {
-		fmt.Println("Login out error is ", err)
+		fmt.Println("Log out error is ", err)
 		return
 	}
 	flag, err := checkLogin()
 	if err != nil {
-		fmt.Println("Login out is fail ")
+		fmt.Println("Log out is fail ")
 		return
 	}
 	if flag == false {
-		fmt.Println("Login out success!")
+		fmt.Println("Log out success!")
 		return
 	}
 
@@ -131,10 +123,7 @@ func loginInit() (r int, err1 error) {
 
 	var chose string
 	var account, password string
-<<<<<<< HEAD
-=======
 	var times float64
->>>>>>> mr-3
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
@@ -234,8 +223,8 @@ func command() (chose bool) {
 
 	pattern := flag.Bool("i", false, "Enter the interactive interface(true or false):")
 	loginleft := flag.Bool("l", false, "Disconnect the internet(true or false)")
-	account := flag.String("a", " ", "Input your accout")
-	password := flag.String("p", " ", "Input your password")
+	account := flag.String("a", "", "Input your accout")
+	password := flag.String("p", "", "Input your password")
 	compulsive := flag.Bool("c", false, "Compulsive login")
 	times := flag.Float64("t", -1, "Set time(second)")
 
@@ -267,7 +256,7 @@ func command() (chose bool) {
 			}
 		}
 	} else if sign == true {
-		fmt.Println("You have Login,don't login once more!")
+		fmt.Println("You have Login, don't login once more!")
 	} else {
 		fmt.Println("optional arguments:")
 		fmt.Println("-i , Interactive interface ,   change into interactive interface(enter -i=true/false) ")
@@ -280,98 +269,7 @@ func command() (chose bool) {
 	}
 	return false
 }
-func main() {
-	//默认为参数行执行
-	flag := command()
-	if flag == true {
-		fmt.Println("Welcome to the interactive interface:")
-		//执行初始化函数
-		result, err := loginInit()
-		if err != nil {
-			fmt.Println("error is ", err)
-			return
-		}
-		if result != 1 {
-			return
-		}
-		//执行下一步操作
-		sign := nextAction()
-		for sign == 0 {
-			sign = nextAction()
-		}
-	}
-	return 1, nil
 
-}
-
-//下一步操作
-func nextAction() (sign int) {
-	var chose int
-	fmt.Println("Please enter next operate:")
-	fmt.Printf("1、change user  2、exit script:")
-	fmt.Scanln(&chose)
-	switch chose {
-	case 1:
-		flag, err := changeUser()
-		if err != nil {
-			fmt.Println("error is ", err)
-		}
-		if flag != 1 {
-			fmt.Println("change login fail!")
-		}
-	case 2:
-		return 1
-	default:
-		fmt.Println("Please enter the right chose!")
-	}
-	return 0
-}
-
-//命令行函数
-func command() (chose bool) {
-
-	pattern := flag.Bool("i", false, "Enter the interactive interface(true or false):")
-	loginleft := flag.Bool("l", false, "Disconnect the internet(true or false)")
-	account := flag.String("a", " ", "Input your accout")
-	password := flag.String("p", " ", "Input your password")
-	compulsive := flag.Bool("c", false, "Compulsive login")
-
-	flag.Parse()
-	sign, err := checkLogin()
-	if err != nil {
-		fmt.Print("check err have some errors")
-		return false
-	}
-
-	if *loginleft == true {
-		loginOut()
-		return false
-	}
-	if *pattern == true {
-		return *pattern
-	}
-	if *account != " " && *password != " " && (sign == false || *compulsive == true) {
-		sign, err := loginNet(*account, *password)
-		if err != nil {
-			fmt.Println("login error is ", err)
-			return
-		}
-		if sign == 1 {
-			fmt.Println("login success !")
-		}
-	} else if sign == true {
-		fmt.Println("You have Login,don't login once more!")
-	} else {
-		fmt.Println("optional arguments:")
-		fmt.Println("-i , Interactive interface ,   change into interactive interface(enter -i=true/false) ")
-		fmt.Println("-l , Loginout ,  Disconnect the internet(enter -l=true/false)")
-		fmt.Println("-a , Account ,  Input your login account")
-		fmt.Println("-p , Password , Input your login password")
-		fmt.Println("-c , Compulsive login , Compulsive login the Internet(enter -c=true/false)")
-
-	}
-	return false
-}
 func main() {
 	//默认为参数行执行
 	flag := command()
