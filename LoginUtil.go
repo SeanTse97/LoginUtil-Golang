@@ -98,16 +98,16 @@ func loginNetTwo(account, password string) (sign int, err error) {
 func loginOut() {
 	_, err := http.Get("http://192.168.252.254/F.htm")
 	if err != nil {
-		fmt.Println("Login out error is ", err)
+		fmt.Println("Log out error is ", err)
 		return
 	}
 	flag, err := checkLogin()
 	if err != nil {
-		fmt.Println("Login out is fail ")
+		fmt.Println("Log out is fail ")
 		return
 	}
 	if flag == false {
-		fmt.Println("Login out success!")
+		fmt.Println("Log out success!")
 		return
 	}
 
@@ -280,8 +280,8 @@ func command() (chose bool) {
 
 	pattern := flag.Bool("i", false, "Enter the interactive interface(true or false):")
 	loginleft := flag.Bool("l", false, "Disconnect the internet(true or false)")
-	account := flag.String("a", " ", "Input your accout")
-	password := flag.String("p", " ", "Input your password")
+	account := flag.String("a", "", "Input your accout")
+	password := flag.String("p", "", "Input your password")
 	compulsive := flag.Bool("c", false, "Compulsive login")
 	times := flag.Float64("t", -1, "Set time(second)")
 	until := flag.Float64("u", -1, "keep online until(hour)")
@@ -357,5 +357,6 @@ func main() {
 			sign = nextAction()
 		}
 	}
+	return
 
 }
