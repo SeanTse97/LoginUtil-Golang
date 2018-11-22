@@ -23,7 +23,7 @@ func loginNet(account, password string) (sign int, err error) {
 	postDict := map[string]string{
 		"DDDDD":  account,
 		"upass":  password,
-		"0MKKey": "Login script written by python3",
+		"0MKKey": "Login script written goalng",
 	}
 	postValues := url.Values{}
 	for postKey, PostValue := range postDict {
@@ -35,10 +35,55 @@ func loginNet(account, password string) (sign int, err error) {
 	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
 	httpResp, err1 := client.Do(httpReq)
 	if err1 != nil {
+		log.Fatal("post1 error is:", err1)
 		return 0, err1
 	}
 	defer httpResp.Body.Close()
+	flag, _ := checkLogin()
+	if flag == false {
+		fmt.Println("login fail! Please check your account or password")
+		return 0, err
+	}
+	fmt.Printf("The account of %s ", account)
+	return 1, err
 
+}
+
+//备用的登陆地址
+func loginNetTwo(account, password string) (sign int, err error) {
+
+	const responseURL = "http://172.31.252.71:801/eportal/?c=ACSetting&a=Login"
+	var client *http.Client
+	client = http.DefaultClient
+	postDict := map[string]string{
+		"DDDDD":  account,
+		"upass":  password,
+		"0MKKey": "Login script written goalng",
+	}
+	postValues := url.Values{}
+	for postKey, PostValue := range postDict {
+		postValues.Set(postKey, PostValue)
+	}
+	postDataStr := postValues.Encode()
+	postDataBytes := []byte(postDataStr)
+	postBytesReader := bytes.NewReader(postDataBytes)
+	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
+
+	httpReq.Header.Set("Accept", "*/*")
+	httpReq.Header.Set("Accept-Encoding", " gzip, deflate")
+	httpReq.Header.Set("Accept-Language", " zh-CN,zh;q=0.9")
+	httpReq.Header.Set("Origin", "http://172.31.252.71")
+	httpReq.Header.Set("Cache-Control", "no-cache")
+	httpReq.Header.Set("Connection", " keep-alive")
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	httpReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.92 Safari/537.36")
+
+	httpResp, err1 := client.Do(httpReq)
+	if err1 != nil {
+		log.Fatal("post2 err:", err)
+		return 0, err1
+	}
+	defer httpResp.Body.Close()
 	flag, _ := checkLogin()
 	if flag == false {
 		fmt.Println("login fail! Please check your account or password.")
@@ -75,7 +120,7 @@ func checkLogin() (flag bool, err error) {
 	const URL = "http://192.168.252.254/"
 	resp, err := http.Get(URL)
 	if err != nil {
-		fmt.Println("checklogin error is ", err)
+		log.Fatal(err)
 		return flag, err
 	}
 	decoder := mahonia.NewDecoder("GBK")
@@ -84,7 +129,7 @@ func checkLogin() (flag bool, err error) {
 
 	body, err1 := ioutil.ReadAll(resp.Body)
 	if err1 != nil {
-		fmt.Println("error is ", err1)
+		log.Fatal("error is ", err1)
 		return flag, err1
 	}
 	result := decoder.ConvertString(string(body))
@@ -107,7 +152,7 @@ func changeUser() (flag int, err error) {
 
 	flag, err = loginNet(account, password)
 	if err != nil {
-		fmt.Println("Login fail!")
+		log.Fatal(err)
 		return 0, err
 	}
 	if flag != 1 {
@@ -128,7 +173,7 @@ func loginInit() (r int, err1 error) {
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
-		fmt.Println("error is ", err)
+		log.Fatal("error is ", err)
 		return 0, err
 	}
 	if flag == true {
@@ -154,14 +199,14 @@ func loginInit() (r int, err1 error) {
 
 	sign, err := loginNet(account, password)
 	if err != nil {
-		fmt.Println("login error is ", err)
+		log.Fatal("login error is ", err)
 		return 0, err
 	}
 	if sign == 1 {
 		fmt.Println("login success !")
-		fmt.Printf("Please set time to check(enter -1 to pass):")
+		fmt.Printf("Please set time to check(second)(enter -1 to pass):")
 		fmt.Scanln(&times)
-		fmt.Printf("Please set time to keep(enter -1 to pass):")
+		fmt.Printf("Please set time to keep(hour)(enter -1 to pass):")
 		fmt.Scanln(&timeout)
 		if times >= 0 {
 			keepOnline(times, timeout, account, password)
@@ -183,7 +228,7 @@ func nextAction() (sign int) {
 	case 1:
 		flag, err := changeUser()
 		if err != nil {
-			fmt.Println("error is ", err)
+			log.Fatal("change error is ", err)
 		}
 		if flag != 1 {
 			fmt.Println("change login fail!")
@@ -240,11 +285,12 @@ func command() (chose bool) {
 	compulsive := flag.Bool("c", false, "Compulsive login")
 	times := flag.Float64("t", -1, "Set time(second)")
 	until := flag.Float64("u", -1, "keep online until(hour)")
+	spare := flag.Bool("s", false, "Use the spare URL to login in")
 
 	flag.Parse()
 	sign, err := checkLogin()
 	if err != nil {
-		fmt.Print("check err have some errors")
+		log.Fatal("check login error is:", err)
 		return false
 	}
 
@@ -256,10 +302,17 @@ func command() (chose bool) {
 		return *pattern
 	}
 	if *account != " " && *password != " " && (sign == false || *compulsive == true) {
-		sign, err := loginNet(*account, *password)
+		var sign int
+		var err error
+
+		if *spare == true {
+			sign, err = loginNetTwo(*account, *password)
+		} else {
+			sign, err = loginNet(*account, *password)
+		}
 		if err != nil {
-			fmt.Println("login error is ", err)
-			return
+			log.Fatal("login error is ", err)
+			return false
 		}
 		if sign == 1 {
 			fmt.Println("login success !")
@@ -272,13 +325,14 @@ func command() (chose bool) {
 		fmt.Println("You have Login,don't login once more!")
 	} else {
 		fmt.Println("optional arguments:")
-		fmt.Println("-i , Interactive interface ,   change into interactive interface(enter -i=true/false) ")
+		fmt.Println("-i , Interactive interface ,   change into interactive interface(bool) ")
 		fmt.Println("-l , Loginout ,  Disconnect the internet(enter -l=true/false)")
 		fmt.Println("-a , Account ,  Input your login account")
 		fmt.Println("-p , Password , Input your login password")
-		fmt.Println("-c , Compulsive login , Compulsive login the Internet(enter -c=true/false)")
-		fmt.Println("-t, set time(second), set time to keep online")
-		fmt.Println("-u, set time(hour), to make sure on line")
+		fmt.Println("-c , Compulsive login , Compulsive login the Internet(bool)")
+		fmt.Println("-t , set time(second), set time to keep online")
+		fmt.Println("-u , set time(hour), to make sure on line")
+		fmt.Println("-s , use other url to login(bool)")
 
 	}
 	return false
@@ -291,7 +345,7 @@ func main() {
 		//执行初始化函数
 		result, err := loginInit()
 		if err != nil {
-			fmt.Println("error is ", err)
+			log.Fatal("error is ", err)
 			return
 		}
 		if result != 1 {
