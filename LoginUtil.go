@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/axgle/mahonia"
@@ -35,7 +37,7 @@ func loginNet(account, password string) (sign int, err error) {
 	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
 	httpResp, err1 := client.Do(httpReq)
 	if err1 != nil {
-		log.Fatal("post1 error is:", err1)
+		log.Printf("post1 error is: %v\r\n", err1)
 		return 0, err1
 	}
 	defer httpResp.Body.Close()
@@ -44,6 +46,7 @@ func loginNet(account, password string) (sign int, err error) {
 		fmt.Println("login fail! Please check your account or password")
 		return 0, err
 	}
+	log.Printf("login success!\r\n")
 	fmt.Printf("The account of %s ", account)
 	return 1, err
 
@@ -80,7 +83,7 @@ func loginNetTwo(account, password string) (sign int, err error) {
 
 	httpResp, err1 := client.Do(httpReq)
 	if err1 != nil {
-		log.Fatal("post2 err:", err)
+		log.Printf("post2 err: %v\r\n", err)
 		return 0, err1
 	}
 	defer httpResp.Body.Close()
@@ -89,6 +92,7 @@ func loginNetTwo(account, password string) (sign int, err error) {
 		fmt.Println("login fail! Please check your account or password.")
 		return 0, err
 	}
+	log.Printf("login success!\r\n")
 	fmt.Printf("The account of %s ", account)
 	return 1, err
 
@@ -98,12 +102,12 @@ func loginNetTwo(account, password string) (sign int, err error) {
 func loginOut() {
 	_, err := http.Get("http://192.168.252.254/F.htm")
 	if err != nil {
-		fmt.Println("Log out error is ", err)
+		log.Printf("Login out error is: %v\r\n", err)
 		return
 	}
 	flag, err := checkLogin()
 	if err != nil {
-		fmt.Println("Log out is fail ")
+		log.Printf("Log out error is: %v\r\n", err)
 		return
 	}
 	if flag == false {
@@ -120,7 +124,7 @@ func checkLogin() (flag bool, err error) {
 	const URL = "http://192.168.252.254/"
 	resp, err := http.Get(URL)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Get http://192.168.252.254/ error is: %v\r\n", err)
 		return flag, err
 	}
 	decoder := mahonia.NewDecoder("GBK")
@@ -129,7 +133,7 @@ func checkLogin() (flag bool, err error) {
 
 	body, err1 := ioutil.ReadAll(resp.Body)
 	if err1 != nil {
-		log.Fatal("error is ", err1)
+		log.Printf("read respones error is: %v\r\n", err1)
 		return flag, err1
 	}
 	result := decoder.ConvertString(string(body))
@@ -152,7 +156,7 @@ func changeUser() (flag int, err error) {
 
 	flag, err = loginNet(account, password)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("changer login error is: %v\r\n", err)
 		return 0, err
 	}
 	if flag != 1 {
@@ -173,7 +177,7 @@ func loginInit() (r int, err1 error) {
 	//检测账号是否已经登陆
 	flag, err := checkLogin()
 	if err != nil {
-		log.Fatal("error is ", err)
+		log.Printf("check login error is: %v\r\n", err)
 		return 0, err
 	}
 	if flag == true {
@@ -199,10 +203,11 @@ func loginInit() (r int, err1 error) {
 
 	sign, err := loginNet(account, password)
 	if err != nil {
-		log.Fatal("login error is ", err)
+		log.Printf("login error is: %v\r\n", err)
 		return 0, err
 	}
 	if sign == 1 {
+		log.Printf("login success!\r\n")
 		fmt.Println("login success !")
 		fmt.Printf("Please set time to check(second)(enter -1 to pass):")
 		fmt.Scanln(&times)
@@ -228,7 +233,7 @@ func nextAction() (sign int) {
 	case 1:
 		flag, err := changeUser()
 		if err != nil {
-			log.Fatal("change error is ", err)
+			log.Printf("change error is: %v\r\n", err)
 		}
 		if flag != 1 {
 			fmt.Println("change login fail!")
@@ -245,34 +250,48 @@ func nextAction() (sign int) {
 func keepOnline(times, until float64, account, password string) {
 
 	until = until * 3600 //数据换算
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	quit := time.After(time.Second * time.Duration(until))
+	go protectNet(quit, &wg, times, account, password)
+	wg.Wait()
 
+}
+
+//守护线程
+func protectNet(quit <-chan time.Time, wg *sync.WaitGroup, times float64, account, password string) {
 	tc := time.Tick(time.Duration(times) * time.Second)
 
-	timeout := time.NewTimer(time.Duration(until) * time.Second)
-
-	go func() {
-		for _ = range tc {
-			flag, err := checkLogin()
-			if err != nil {
-				log.Fatal(err)
-				return
-			}
-			if flag == false {
-				_, err1 := loginNet(account, password)
-				if err1 != nil {
-					log.Fatal(err1)
-					return
-				}
-
-				fmt.Println("return login!")
-			}
-
+	defer wg.Done()
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("panic: %v\r\n", err)
+			return
 		}
-
 	}()
-	<-timeout.C
-	loginOut()
-	return
+	for _ = range tc {
+		flag, err := checkLogin()
+		if err != nil {
+			log.Printf("check login error is: %v\r\n", err)
+			panic(err)
+		}
+		if flag == false {
+			_, err1 := loginNet(account, password)
+			if err1 != nil {
+				log.Printf("loginNet error is: %v\r\n", err1)
+				panic(err1)
+			}
+			fmt.Println("return login!")
+		}
+		select {
+		case <-quit:
+			fmt.Println("The time already arrival!")
+			return
+		default:
+			break
+		}
+	}
+
 }
 
 //命令行函数
@@ -290,7 +309,7 @@ func command() (chose bool) {
 	flag.Parse()
 	sign, err := checkLogin()
 	if err != nil {
-		log.Fatal("check login error is:", err)
+		log.Printf("check login error is: %v\r\n", err)
 		return false
 	}
 
@@ -311,7 +330,7 @@ func command() (chose bool) {
 			sign, err = loginNet(*account, *password)
 		}
 		if err != nil {
-			log.Fatal("login error is ", err)
+			log.Printf("login error is: %v\r\n", err)
 			return false
 		}
 		if sign == 1 {
@@ -338,6 +357,14 @@ func command() (chose bool) {
 	return false
 }
 func main() {
+	//增加日志文件
+	logfile, err := os.OpenFile("Runtime.log", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Println("Open logfile fail!")
+		os.Exit(1)
+	}
+	log.SetOutput(logfile) //写入日志文件
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	//默认为参数行执行
 	flag := command()
 	if flag == true {
@@ -345,7 +372,7 @@ func main() {
 		//执行初始化函数
 		result, err := loginInit()
 		if err != nil {
-			log.Fatal("error is ", err)
+			log.Printf("loginInit error is: %v\r\n", err)
 			return
 		}
 		if result != 1 {
@@ -357,6 +384,8 @@ func main() {
 			sign = nextAction()
 		}
 	}
+	log.Printf("login out!\r\n")
+	defer logfile.Close()
 	return
 
 }
