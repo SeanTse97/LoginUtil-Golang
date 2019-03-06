@@ -12,43 +12,13 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/axgle/mahonia"
 )
 
-//上网登录
-func loginNet(account, password string) (sign int, err error) {
-	const responseURL = "http://192.168.252.254"
-	var client *http.Client
-	client = http.DefaultClient
-
-	postDict := map[string]string{
-		"DDDDD":  account,
-		"upass":  password,
-		"0MKKey": "Login script written goalng",
-	}
-	postValues := url.Values{}
-	for postKey, PostValue := range postDict {
-		postValues.Set(postKey, PostValue)
-	}
-	postDataStr := postValues.Encode()
-	postDataBytes := []byte(postDataStr)
-	postBytesReader := bytes.NewReader(postDataBytes)
-	httpReq, _ := http.NewRequest("POST", responseURL, postBytesReader)
-	httpResp, err1 := client.Do(httpReq)
-	if err1 != nil {
-		log.Printf("post1 error is: %v\r\n", err1)
-		return 0, err1
-	}
-	defer httpResp.Body.Close()
-	flag, _ := checkLogin()
-	if flag == false {
-		fmt.Println("login fail! Please check your account or password")
-		return 0, err
-	}
-	log.Printf("login success!\r\n")
-	fmt.Printf("The account of %s ", account)
-	return 1, err
+type information struct {
+	Result    string `json:"result"`
+	Message   string `json:"message"`
+	UserIndex string `json:"userIndex"`
+}
 
 }
 
@@ -180,19 +150,6 @@ func loginInit() (r int, err1 error) {
 		log.Printf("check login error is: %v\r\n", err)
 		return 0, err
 	}
-	if flag == true {
-		fmt.Println("YOU ALREADY LOGIN!")
-		//询问是否退出登陆
-		fmt.Printf("Do you want to login out now?(y or n):")
-		fmt.Scanln(&chose)
-		if chose == "n" {
-			return 1, err
-		}
-		loginOut()
-	}
-	fmt.Printf("Do you want to login in now:(y or n)")
-	fmt.Scanln(&chose)
-	if chose == "n" {
 		return 1, nil
 	}
 
@@ -206,44 +163,7 @@ func loginInit() (r int, err1 error) {
 		log.Printf("login error is: %v\r\n", err)
 		return 0, err
 	}
-	if sign == 1 {
-		log.Printf("login success!\r\n")
-		fmt.Println("login success !")
-		fmt.Printf("Please set time to check(second)(enter -1 to pass):")
-		fmt.Scanln(&times)
-		fmt.Printf("Please set time to keep(hour)(enter -1 to pass):")
-		fmt.Scanln(&timeout)
-		if times >= 0 {
-			keepOnline(times, timeout, account, password)
-		} else {
-			fmt.Println("Pass this set up!")
-		}
-	}
 	return 1, nil
-
-}
-
-//下一步操作
-func nextAction() (sign int) {
-	var chose int
-	fmt.Println("Please enter next operate:")
-	fmt.Printf("1、change user  2、exit script: ")
-	fmt.Scanln(&chose)
-	switch chose {
-	case 1:
-		flag, err := changeUser()
-		if err != nil {
-			log.Printf("change error is: %v\r\n", err)
-		}
-		if flag != 1 {
-			fmt.Println("change login fail!")
-		}
-	case 2:
-		return 1
-	default:
-		fmt.Println("Please enter the right chose!")
-	}
-	return 0
 }
 
 //后台保护
@@ -304,7 +224,6 @@ func command() (chose bool) {
 	compulsive := flag.Bool("c", false, "Compulsive login")
 	times := flag.Float64("t", -1, "Set time(second)")
 	until := flag.Float64("u", -1, "keep online until(hour)")
-	spare := flag.Bool("s", false, "Use the spare URL to login in")
 
 	flag.Parse()
 	sign, err := checkLogin()
@@ -340,11 +259,8 @@ func command() (chose bool) {
 				keepOnline(*times, *until, *account, *password)
 			}
 		}
-	} else if sign == true && len(*account) > 1 {
-		fmt.Println("You have Login,don't login once more!")
 	} else {
 		fmt.Println("optional arguments:")
-		fmt.Println("-i , Interactive interface ,   change into interactive interface(bool) ")
 		fmt.Println("-l , Loginout ,  Disconnect the internet(enter -l=true/false)")
 		fmt.Println("-a , Account ,  Input your login account")
 		fmt.Println("-p , Password , Input your login password")
@@ -387,5 +303,4 @@ func main() {
 	log.Printf("login out!\r\n")
 	defer logfile.Close()
 	return
-
 }
